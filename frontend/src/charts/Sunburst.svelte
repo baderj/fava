@@ -2,10 +2,13 @@
   import { partition } from "d3-hierarchy";
   import { scaleLinear, scaleSqrt } from "d3-scale";
   import { arc } from "d3-shape";
+  import { derived } from "svelte/store";
+
+  import { accounts } from "../stores";
 
   import router from "../router";
-  import { accountUrl } from "../helpers";
-  import { sunburstScale } from "./helpers";
+  import { accountUrl} from "../helpers";
+  import { sunburstScale, getColor } from "./helpers";
   import { formatCurrency, formatPercentage } from "../format";
 
   export let data;
@@ -19,7 +22,16 @@
       d.value / root.value
     )})`;
   }
-
+  function blabla(d) {
+    console.log("blabla", d)
+    console.log("getColor", getColor(d))
+    console.log($sunburstScale)
+    console.log("so accounts are", accounts)
+    const r = derived(accounts, (a) => {
+      a
+    });
+    console.log("r", r)
+  }
   $: root = partition()(data);
   $: leaves = root.descendants().filter((d) => !d.data.dummy && d.depth);
 
@@ -36,7 +48,7 @@
     .startAngle((d) => x(d.x0))
     .endAngle((d) => x(d.x1))
     .innerRadius((d) => y(d.y0))
-    .outerRadius((d) => y(d.y1));
+    .outerRadius((d) => 0.95*y(d.y1));
 </script>
 
 <style>
@@ -65,7 +77,10 @@
       }}
       class:half={current && !currentAccount.startsWith(d.data.account)}
       fill-rule="evenodd"
-      fill={$sunburstScale(d.data.account)}
+      stroke="white"
+      stroke-width="2"
+      fill={getColor(d)}
+      tmp={blabla(d)}
       d={arcShape(d)} />
   {/each}
 </g>

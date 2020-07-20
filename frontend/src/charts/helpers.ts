@@ -1,7 +1,8 @@
-import { hcl } from "d3-color";
+import { hcl, color } from "d3-color";
 import { scaleOrdinal } from "d3-scale";
 import { get, derived } from "svelte/store";
 
+import { Node } from "../documents/util";
 import { accounts, operating_currency, commodities } from "../stores";
 import { time_filter } from "../stores/filters";
 import { currentTimeFilterDateFormat } from "../format";
@@ -26,6 +27,93 @@ function hclColorRange(count: number, chroma = 45, lightness = 70): string[] {
   return colors.map((c) => c.toString());
 }
 
+// export function colorMapper(account: string):boolean {
+//   return
+// }
+
+
+const colors = [
+  "#f14a41",
+  "#f46c3c",
+  "#f79031",
+  "#fcb819",
+  "#ffdf01",
+  "#f4e91d",
+  "#d1dc26",
+  "#b3d334",
+  "#9bc83a",
+  "#87c540",
+  "#81c67f",
+  "#7ecfd0",
+  "#77cdeb",
+  "#5cbdea",
+  "#5c90c7",
+  "#4d6eb5",
+  "#6a58a4",
+  "#9f62aa",
+  "#b55fa6",
+  "#f0478f",
+]
+
+const colorSchemes = [
+  [7],
+  [7,0],
+  [7, 13, 0],
+  [7, 13, 0, 2],
+  [0, 2, 7, 13, 19],
+  [0, 2, 4, 7, 13, 19],
+  [0, 2, 4, 7, 13, 19],
+  [0, 2, 4, 7, 13, 16, 19],
+  [0, 2, 4, 7, 10, 13, 16, 19],
+  [0, 2, 4, 7, 10, 13, 16, 19],
+  [0, 1, 2, 4, 7, 10, 13, 16, 19],
+  [0, 1, 2, 3, 4, 7, 10, 13, 16, 19],
+  [0, 1, 2, 3, 4, 7, 8, 10, 13, 16, 19],
+  [0, 1, 2, 3, 4, 7, 8, 10, 13, 16, 18, 19],
+  [0, 1, 2, 3, 4, 6, 7, 8, 10, 13, 16, 18, 19],
+  [0, 1, 2, 3, 4, 6, 7, 8, 10, 11, 13, 16, 18, 19],
+  [0, 1, 2, 3, 4, 6, 7, 8, 10, 11, 13, 15, 16, 18, 19],
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 13, 15, 16, 18, 19],
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 16, 18, 19],
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 18, 19],
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19],
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
+]
+
+function colorsNr(count: number) {
+  let indexes;
+  if(count >= colorSchemes.length) {
+    indexes = colorSchemes[colorSchemes.length -1]
+  } else {
+    indexes = colorSchemes[count - 1]
+  }
+  const cols: Array<string> = [];
+  indexes.forEach((i) => {
+    cols.push(colors[i]);
+  })
+  return cols;
+}
+
+export function getColor(data:Node):string {
+  const total = data.parent.children.length
+  const {account} = data.data
+  let cs = colorSchemes[colorSchemes.length - 1];
+  if (total < colorSchemes.length) {
+    cs = colorSchemes[total];
+  }
+  const hey = "";
+  for(let i = 0; i < total; i += 1) {
+    if(data.parent.children[i].data.account === account){
+      if (data.depth === 1)
+        {return colors[cs[i]]}
+      if(data.depth > 1) {
+        return color(getColor(data.parent)).darker((i+1)/3.0)
+      }
+    }
+  }
+  return "#000000"
+}
+
 export const colors10 = hclColorRange(10);
 export const colors15 = hclColorRange(15, 30, 80);
 
@@ -35,20 +123,20 @@ export const colors15 = hclColorRange(15, 30, 80);
  * The scales for treemap and sunburst charts will be initialised with all
  * accounts on page init and currencies with all commodities.
  */
-export const scatterplotScale = scaleOrdinal(colors10);
+export const scatterplotScale = scaleOrdinal(colorsNr(10));
 
 export const treemapScale = derived(accounts, (accounts_val) =>
-  scaleOrdinal(colors15).domain(accounts_val)
+  scaleOrdinal(colorsNr(accounts_val.length)).domain(accounts_val)
 );
 
 export const sunburstScale = derived(accounts, (accounts_val) =>
-  scaleOrdinal(colors10).domain(accounts_val)
+  scaleOrdinal(colorsNr(accounts_val.length)).domain(accounts_val)
 );
 
 export const currenciesScale = derived(
   [operating_currency, commodities],
   ([operating_currency_val, commodities_val]) =>
-    scaleOrdinal(colors10).domain([
+    scaleOrdinal(colorsNr(10)).domain([
       ...operating_currency_val,
       ...commodities_val,
     ])
