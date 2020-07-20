@@ -2,7 +2,6 @@ import { hcl, color } from "d3-color";
 import { scaleOrdinal } from "d3-scale";
 import { get, derived } from "svelte/store";
 
-import { Node } from "../documents/util";
 import { accounts, operating_currency, commodities } from "../stores";
 import { time_filter } from "../stores/filters";
 import { currentTimeFilterDateFormat } from "../format";
@@ -94,7 +93,7 @@ function colorsNr(count: number) {
   return cols;
 }
 
-export function getColor(data:Node):string {
+export function getColor(data:any):string {
   const total = data.parent.children.length
   const {account} = data.data
   let cs = colorSchemes[colorSchemes.length - 1];
