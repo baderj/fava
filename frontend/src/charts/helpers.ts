@@ -107,7 +107,9 @@ export function getColor(data: any): string {
       }
       if (data.depth > 1) {
         const cc = color(getColor(data.parent));
-        if (cc) {return cc.darker((i + 1) / 3.0).hex();}
+        if (cc) {
+          return cc.darker((i + 1) / 3.0).hex();
+        }
       }
     }
   }
@@ -136,7 +138,7 @@ export const sunburstScale = derived(accounts, (accounts_val) =>
 export const currenciesScale = derived(
   [operating_currency, commodities],
   ([operating_currency_val, commodities_val]) =>
-    scaleOrdinal(colorsNr(10)).domain([
+    scaleOrdinal(colorsNr(1)).domain([
       ...operating_currency_val,
       ...commodities_val,
     ])
