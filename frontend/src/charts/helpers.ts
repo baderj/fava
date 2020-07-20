@@ -30,7 +30,6 @@ function hclColorRange(count: number, chroma = 45, lightness = 70): string[] {
 //   return
 // }
 
-
 const colors = [
   "#f14a41",
   "#f46c3c",
@@ -52,11 +51,11 @@ const colors = [
   "#9f62aa",
   "#b55fa6",
   "#f0478f",
-]
+];
 
 const colorSchemes = [
   [7],
-  [7,0],
+  [7, 0],
   [7, 13, 0],
   [7, 13, 0, 2],
   [0, 2, 7, 13, 19],
@@ -77,40 +76,42 @@ const colorSchemes = [
   [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 18, 19],
   [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19],
   [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
-]
+];
 
 function colorsNr(count: number) {
   let indexes;
-  if(count >= colorSchemes.length) {
-    indexes = colorSchemes[colorSchemes.length -1]
+  if (count >= colorSchemes.length) {
+    indexes = colorSchemes[colorSchemes.length - 1];
   } else {
-    indexes = colorSchemes[count - 1]
+    indexes = colorSchemes[count - 1];
   }
   const cols: Array<string> = [];
   indexes.forEach((i) => {
     cols.push(colors[i]);
-  })
+  });
   return cols;
 }
 
-export function getColor(data:any):string {
-  const total = data.parent.children.length
-  const {account} = data.data
+export function getColor(data: any): string {
+  const total = data.parent.children.length;
+  const { account } = data.data;
   let cs = colorSchemes[colorSchemes.length - 1];
   if (total < colorSchemes.length) {
     cs = colorSchemes[total];
   }
   const hey = "";
-  for(let i = 0; i < total; i += 1) {
-    if(data.parent.children[i].data.account === account){
-      if (data.depth === 1)
-        {return colors[cs[i]]}
-      if(data.depth > 1) {
-        return color(getColor(data.parent)).darker((i+1)/3.0)
+  for (let i = 0; i < total; i += 1) {
+    if (data.parent.children[i].data.account === account) {
+      if (data.depth === 1) {
+        return colors[cs[i]];
+      }
+      if (data.depth > 1) {
+        const cc = color(getColor(data.parent));
+        if (cc) {return cc.darker((i + 1) / 3.0).hex();}
       }
     }
   }
-  return "#000000"
+  return "#000000";
 }
 
 export const colors10 = hclColorRange(10);
