@@ -7,7 +7,7 @@ import { commodities, operating_currency } from ".";
 export const showCharts = writable(true);
 export const activeChart = writable({});
 export const chartMode = writable("treemap");
-export const lineChartMode = writable("line");
+export const lineChartMode = writable("area");
 export const chartCurrency = writable("");
 
 const currencySuggestions = derived(
