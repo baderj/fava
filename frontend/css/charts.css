@@ -77,6 +77,14 @@ svg.sunburst .account {
   fill: var(--color-text);
 }
 
+svg.sunburst text.main {
+  font-weight: 800;
+}
+
+svg.sunburst text.sub {
+  font-size: 0.9rem;
+}
+
 svg.sunburst .balance {
   font-family: var(--font-family-monospaced);
 }

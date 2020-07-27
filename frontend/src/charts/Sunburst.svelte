@@ -7,7 +7,7 @@
   import { accounts } from "../stores";
 
   import router from "../router";
-  import { accountUrl} from "../helpers";
+  import { accountUrl } from "../helpers";
   import { sunburstScale, getColor } from "./helpers";
   import { formatCurrency, formatPercentage } from "../format";
 
@@ -15,25 +15,30 @@
   export let currency;
   export let width;
   export let height;
+  const offset = 11;
   $: radius = Math.min(width, height) / 2;
+  $: myRound = (d) => {
+    return ` ${  Math.round(d)}`;
+  };
 
   function balanceText(d) {
-    return `${formatCurrency(d.value)} ${currency} (${formatPercentage(
-      d.value / root.value
-    )})`;
+    let value = Math.floor(d.value);
+    if (value >= 9999) {
+      value = `${Math.floor(value / 1000)  }k`;
+    }
+
+    return `${value} ${currency} (${formatPercentage(d.value / root.value)})`;
   }
   function blabla(d) {
-    console.log("blabla", d)
-    console.log("getColor", getColor(d))
-    console.log($sunburstScale)
-    console.log("so accounts are", accounts)
-    const r = derived(accounts, (a) => {
-      a
-    });
-    console.log("r", r)
+    console.log("blabla", d);
   }
   $: root = partition()(data);
   $: leaves = root.descendants().filter((d) => !d.data.dummy && d.depth);
+  $: justName = (n) => {
+    const els = n.split(":");
+    const last = els.pop();
+    return last;
+  };
 
   let current = null;
   $: if (root) {
@@ -48,7 +53,7 @@
     .startAngle((d) => x(d.x0))
     .endAngle((d) => x(d.x1))
     .innerRadius((d) => y(d.y0))
-    .outerRadius((d) => 0.95*y(d.y1));
+    .outerRadius((d) => 0.98 * y(d.y1));
 </script>
 
 <style>
@@ -60,7 +65,7 @@
 <g
   {width}
   {height}
-  transform={`translate(${width / 2},${height / 2})`}
+  transform={`translate(${height / 2},${height / 2})`}
   on:mouseleave={() => {
     current = null;
   }}>
@@ -80,7 +85,82 @@
       stroke="white"
       stroke-width="2"
       fill={getColor(d)}
-      tmp={blabla(d)}
       d={arcShape(d)} />
   {/each}
+</g>
+
+<g transform={`translate(${height * 1.1},${height / 10})`}>
+  {#if root.children.length > 3}
+    {#each root.children as d, i}
+      {#if d.children}
+        <g
+          transform={`translate(${Math.floor(i / 5) * 400}, ${(i % 5) * 13 * (5 + 2)})`}>
+          <rect x="-10" y="-15" width="15" height="15" fill={getColor(d)} />
+          <text class="main" dx="13">
+            {justName(d.data.account)} - {balanceText(d)}
+          </text>
+
+          {#each Array(5) as _, j}
+            <g transform={`translate(13, ${(j + 1) * 13})`}>
+              {#if d.children.length > j && d.children[j].value > 0.0}
+                <rect
+                  x="0"
+                  y="-10"
+                  width="10"
+                  height="10"
+                  fill={getColor(d.children[j])} />
+                <text class="sub" dx="13">
+                  {justName(d.children[j].data.account)} - {balanceText(d.children[j])}
+                </text>
+                <!-- <text class="sub" dx="13">{root.children.length}</text> -->
+              {/if}
+            </g>
+          {/each}
+
+        </g>
+      {/if}
+    {/each}
+  {:else}
+    {#each root.children as d, i}
+      {#if d.children}
+        <g transform={`translate(${i * 400}, 0)`}>
+          <rect x="-10" y="-15" width="15" height="15" fill={getColor(d)} />
+          <text class="main" dx="13">
+            {justName(d.data.account)} - {balanceText(d)}
+          </text>
+          {#each Array(5) as _, j}
+            <g transform={`translate(13, ${j * 100 + 20})`}>
+              {#if d.children.length > j && d.children[j].value > 0.0}
+                <rect
+                  x="0"
+                  y="-10"
+                  width="10"
+                  height="10"
+                  fill={getColor(d.children[j])} />
+                <text class="main" dx="13">
+                  {justName(d.children[j].data.account)} - {balanceText(d.children[j])}
+                </text>
+                {#each Array(5) as _, k}
+                  <g transform={`translate(13, ${(k + 1) * 13 + 5})`}>
+                    {#if 'children' in d.children[j] && d.children[j].children.length > k && d.children[j].children[k].value > 0.0}
+                      <rect
+                        x="0"
+                        y="-10"
+                        width="10"
+                        height="10"
+                        fill={getColor(d.children[j].children[k])} />
+                      <text class="sub" dx="13">
+                        {justName(d.children[j].children[k].data.account)} - {balanceText(d.children[j].children[k])}
+                      </text>
+                    {/if}
+                  </g>
+                {/each}
+              {/if}
+            </g>
+          {/each}
+
+        </g>
+      {/if}
+    {/each}
+  {/if}
 </g>
