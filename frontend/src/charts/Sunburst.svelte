@@ -18,13 +18,13 @@
   const offset = 11;
   $: radius = Math.min(width, height) / 2;
   $: myRound = (d) => {
-    return ` ${  Math.round(d)}`;
+    return ` ${Math.round(d)}`;
   };
 
   function balanceText(d) {
     let value = Math.floor(d.value);
-    if (value >= 9999) {
-      value = `${Math.floor(value / 1000)  }k`;
+    if (value >= 99999) {
+      value = `${Math.floor(value / 1000)}k`;
     }
 
     return `${value} ${currency} (${formatPercentage(d.value / root.value)})`;
