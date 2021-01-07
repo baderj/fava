@@ -21,7 +21,7 @@
     bottom: 30,
     left: 40,
   };
-  const height = 250;
+  const height = 450;
   $: innerWidth = width - margin.left - margin.right;
   $: innerHeight = height - margin.top - margin.bottom;
 

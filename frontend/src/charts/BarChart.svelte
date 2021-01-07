@@ -19,7 +19,7 @@
     bottom: 30,
     left: 40,
   };
-  const height = 250;
+  const height = 400;
   $: innerHeight = height - margin.top - margin.bottom;
   $: maxWidth = data.length * maxColumnWidth;
   $: offset = margin.left + Math.max(0, width - maxWidth) / 2;
