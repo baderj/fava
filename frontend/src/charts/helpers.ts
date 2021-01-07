@@ -97,8 +97,10 @@ export function getColor(data: any): string {
   if (total < colorSchemes.length) {
     cs = colorSchemes[total];
   }
-  const hey = "";
   for (let i = 0; i < total; i += 1) {
+    if (account.includes("Savings")) {
+      return "#BBBBBB";
+    }
     if (data.parent.children[i].data.account === account) {
       if (data.depth === 1) {
         return colors[cs[i]];

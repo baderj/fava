@@ -77,17 +77,43 @@ class ChartModule(FavaModule):
         conversion: str,
         begin: Optional[datetime.date] = None,
         end: Optional[datetime.date] = None,
+        add: Optional[str] = None
     ):
         """An account tree."""
         if begin is not None:
             tree = Tree(iter_entry_dates(self.ledger.entries, begin, end))
         else:
             tree = self.ledger.root_tree
-        return tree.get(account_name).serialise(
+
+        t = tree.get(account_name).serialise(
             conversion, self.ledger.price_map, end - ONE_DAY if end else None
         )
+        if add:
+            s = tree.get(add).serialise(
+                conversion, self.ledger.price_map, end - ONE_DAY if end else None
+            )
+            income = -s['balance_children'].get(conversion)
+            total_exp = t['balance_children'].get(conversion)
 
-    @listify
+            savings = income - total_exp
+
+            t['balance_children'] = {conversion: income}
+            t['children'].append({
+                "account": "Savings",
+                "balance_children": {"CHF": savings},
+                "balance": {},
+                "children": [
+                    {
+                        "account": "Saved",
+                        "balance_children": {"CHF": savings},
+                        "balance": {"CHF": savings},
+                        "children": []
+                    }
+                ]
+            })
+        return t
+
+    @ listify
     def prices(
         self,
     ) -> Generator[
@@ -104,7 +130,7 @@ class ChartModule(FavaModule):
             if prices:
                 yield base, quote, prices
 
-    @listify
+    @ listify
     def interval_totals(
         self,
         interval: Interval,
@@ -137,7 +163,7 @@ class ChartModule(FavaModule):
                 ),
             }
 
-    @listify
+    @ listify
     def linechart(self, account_name: str, conversion: str):
         """The balance of an account.
 
@@ -178,7 +204,7 @@ class ChartModule(FavaModule):
 
             yield {"date": entry.date, "balance": balance}
 
-    @listify
+    @ listify
     def net_worth(self, interval: Interval, conversion: str):
         """Compute net worth.
 
@@ -222,7 +248,7 @@ class ChartModule(FavaModule):
                 ),
             }
 
-    @staticmethod
+    @ staticmethod
     def can_plot_query(types):
         """Whether we can plot the given query.
 
