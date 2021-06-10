@@ -7,6 +7,7 @@ import os
 import re
 import unicodedata
 from typing import Any
+from typing import List
 from typing import MutableMapping
 from typing import Optional
 
@@ -14,7 +15,8 @@ import flask
 from beancount.core import compare
 from beancount.core import realization
 from beancount.core.account import ACCOUNT_RE
-from beancount.core.amount import Amount
+from beancount.core.data import Directive
+from beancount.core.inventory import Inventory
 from beancount.core.number import Decimal
 from beancount.core.number import ZERO
 
@@ -22,11 +24,12 @@ from fava.context import g
 from fava.core.conversion import cost
 from fava.core.conversion import cost_or_value as cost_or_value_without_context
 from fava.core.conversion import units
+from fava.core.tree import TreeNode
 from fava.util.date import Interval
 
 
 def remove_keys(
-    _dict: MutableMapping[str, Any], keys
+    _dict: MutableMapping[str, Any], keys: List[str]
 ) -> MutableMapping[str, Any]:
     """Remove keys from a dictionary."""
     if not _dict:
@@ -37,7 +40,9 @@ def remove_keys(
     return new
 
 
-def cost_or_value(inventory, date: Optional[datetime.date] = None) -> Any:
+def cost_or_value(
+    inventory: Inventory, date: Optional[datetime.date] = None
+) -> Any:
     """Get the cost or value of an inventory."""
     return cost_or_value_without_context(
         inventory, g.conversion, g.ledger.price_map, date
@@ -45,24 +50,19 @@ def cost_or_value(inventory, date: Optional[datetime.date] = None) -> Any:
 
 
 def format_currency(
-    value: Decimal, currency: Optional[str] = None, show_if_zero: bool = False
+    value: Decimal,
+    currency: Optional[str] = None,
+    show_if_zero: bool = False,
+    invert: bool = False,
 ) -> str:
     """Format a value using the derived precision for a specified currency."""
     if not value and not show_if_zero:
         return ""
     if value == ZERO:
         return g.ledger.format_decimal(ZERO, currency)
+    if invert:
+        value = -value
     return g.ledger.format_decimal(value, currency)
-
-
-def format_amount(amount: Amount) -> str:
-    """Format an amount to string using the DisplayContext."""
-    if amount is None:
-        return ""
-    number, currency = amount
-    if number is None:
-        return ""
-    return f"{format_currency(number, currency, True)} {currency}"
 
 
 def format_date(date: datetime.date) -> str:
@@ -80,17 +80,19 @@ def format_date(date: datetime.date) -> str:
     return ""
 
 
-def hash_entry(entry) -> str:
+def hash_entry(entry: Directive) -> str:
     """Hash an entry."""
     return compare.hash_entry(entry)
 
 
-def balance_children(account):
+def balance_children(account: realization.RealAccount) -> Inventory:
     """Compute the total balance of an account."""
     return realization.compute_balance(account)
 
 
-def get_or_create(account, account_name):
+def get_or_create(
+    account: realization.RealAccount, account_name: str
+) -> realization.RealAccount:
     """Get or create a child account."""
     if account.account == account_name:
         return account
@@ -100,12 +102,12 @@ def get_or_create(account, account_name):
 FLAGS_TO_TYPES = {"*": "cleared", "!": "pending"}
 
 
-def flag_to_type(flag):
+def flag_to_type(flag: str) -> str:
     """Names for entry flags."""
     return FLAGS_TO_TYPES.get(flag, "other")
 
 
-def should_show(account) -> bool:
+def should_show(account: TreeNode) -> bool:
     """Determine whether the account should be shown."""
     if not account.balance_children.is_empty() or any(
         should_show(a) for a in account.children
@@ -170,7 +172,6 @@ FILTERS = [
     cost_or_value,
     cost_or_value,
     flag_to_type,
-    format_amount,
     format_currency,
     format_date,
     format_errormsg,

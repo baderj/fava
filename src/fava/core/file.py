@@ -6,40 +6,46 @@ from codecs import decode
 from codecs import encode
 from hashlib import sha256
 from operator import attrgetter
-from typing import Any
-from typing import Dict
 from typing import Generator
 from typing import List
 from typing import Optional
 from typing import Tuple
+from typing import TYPE_CHECKING
 
-from beancount.core import flags
 from beancount.core.data import Balance
 from beancount.core.data import Directive
 from beancount.core.data import Entries
 from beancount.core.data import SORT_ORDER
 from beancount.core.data import Transaction
+from beancount.core.flags import FLAG_CONVERSIONS
+from beancount.core.flags import FLAG_MERGING
+from beancount.core.flags import FLAG_PADDING
+from beancount.core.flags import FLAG_SUMMARIZE
+from beancount.core.flags import FLAG_TRANSFER
 from beancount.parser.printer import format_entry  # type: ignore
 
+from fava.core._compat import FLAG_RETURNS
+from fava.core._compat import FLAG_UNREALIZED
 from fava.core.fava_options import InsertEntryOption
 from fava.core.filters import get_entry_accounts
 from fava.core.misc import align
 from fava.core.module_base import FavaModule
 from fava.helpers import FavaAPIException
+from fava.util import next_key
 
+if TYPE_CHECKING:
+    from fava.core import FavaLedger
 
-#: The flags to exclude when rendering entries entries.
-EXCL_FLAGS = set(
-    (
-        flags.FLAG_PADDING,  # P
-        flags.FLAG_SUMMARIZE,  # S
-        flags.FLAG_TRANSFER,  # T
-        flags.FLAG_CONVERSIONS,  # C
-        flags.FLAG_UNREALIZED,  # U
-        flags.FLAG_RETURNS,  # R
-        flags.FLAG_MERGING,  # M
-    )
-)
+#: The flags to exclude when rendering entries.
+EXCL_FLAGS = {
+    FLAG_PADDING,  # P
+    FLAG_SUMMARIZE,  # S
+    FLAG_TRANSFER,  # T
+    FLAG_CONVERSIONS,  # C
+    FLAG_UNREALIZED,  # U
+    FLAG_RETURNS,  # R
+    FLAG_MERGING,  # M
+}
 
 
 def sha256_str(val: str) -> str:
@@ -50,22 +56,9 @@ def sha256_str(val: str) -> str:
 class FileModule(FavaModule):
     """Functions related to reading/writing to Beancount files."""
 
-    def __init__(self, ledger) -> None:
+    def __init__(self, ledger: "FavaLedger") -> None:
         super().__init__(ledger)
         self.lock = threading.Lock()
-
-    def list_sources(self) -> List[str]:
-        """List source files.
-
-        Returns:
-            A list of all sources files, with the main file listed first.
-        """
-        main_file = self.ledger.beancount_file_path
-        return [main_file] + sorted(
-            file
-            for file in self.ledger.options["include"]
-            if file != main_file
-        )
 
     def get_source(self, path: str) -> Tuple[str, str]:
         """Get source files.
@@ -160,7 +153,13 @@ class FileModule(FavaModule):
         """
         with self.lock:
             entry = self.ledger.get_entry(entry_hash)
-            return save_entry_slice(entry, source_slice, sha256sum)
+            ret = save_entry_slice(entry, source_slice, sha256sum)
+
+            self.ledger.extensions.run_hook(
+                "after_entry_modified", entry, source_slice
+            )
+
+            return ret
 
     def insert_entries(self, entries: Entries) -> None:
         """Insert entries.
@@ -215,26 +214,12 @@ def incomplete_sortkey(entry: Directive) -> Tuple[datetime.date, int]:
     return (entry.date, SORT_ORDER.get(type(entry), 0))
 
 
-def next_key(basekey: str, keys: Dict[str, Any]) -> str:
-    """Returns the next unused key for basekey in the supplied array.
-
-    The first try is `basekey`, followed by `basekey-2`, `basekey-3`, etc
-    until a free one is found.
-    """
-    if basekey not in keys:
-        return basekey
-    i = 2
-    while f"{basekey}-{i}" in keys:
-        i = i + 1
-    return f"{basekey}-{i}"
-
-
 def insert_metadata_in_file(
     filename: str, lineno: int, indent: int, key: str, value: str
 ) -> None:
     """Inserts the specified metadata in the file below lineno, taking into
     account the whitespace in front of the line that lineno."""
-    with open(filename, "r", encoding="utf-8") as file:
+    with open(filename, encoding="utf-8") as file:
         contents = file.readlines()
 
     contents.insert(lineno, f'{" " * indent}{key}: "{value}"\n')
@@ -272,7 +257,7 @@ def get_entry_slice(entry: Directive) -> Tuple[str, str]:
         A string containing the lines of the entry and the `sha256sum` of
         these lines.
     """
-    with open(entry.meta["filename"], mode="r", encoding="utf-8") as file:
+    with open(entry.meta["filename"], encoding="utf-8") as file:
         lines = file.readlines()
 
     entry_lines = find_entry_lines(lines, entry.meta["lineno"] - 1)
@@ -299,7 +284,7 @@ def save_entry_slice(
             source files.
     """
 
-    with open(entry.meta["filename"], "r", encoding="utf-8") as file:
+    with open(entry.meta["filename"], encoding="utf-8") as file:
         lines = file.readlines()
 
     first_entry_line = entry.meta["lineno"] - 1
@@ -343,7 +328,7 @@ def insert_entry(
     )
     content = _format_entry(entry, currency_column, indent)
 
-    with open(filename, "r", encoding="utf-8") as file:
+    with open(filename, encoding="utf-8") as file:
         contents = file.readlines()
 
     if lineno is None:
@@ -375,7 +360,7 @@ def _format_entry(entry: Directive, currency_column: int, indent: int) -> str:
     entry = entry._replace(meta=meta)
     string = align(format_entry(entry, prefix=" " * indent), currency_column)
     string = string.replace("<class 'beancount.core.number.MISSING'>", "")
-    return "\n".join((line.rstrip() for line in string.split("\n")))
+    return "\n".join(line.rstrip() for line in string.split("\n"))
 
 
 def find_insert_position(

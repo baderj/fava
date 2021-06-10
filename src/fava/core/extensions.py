@@ -1,10 +1,13 @@
 """Fava extensions"""
 import inspect
 import os
+from typing import Any
 from typing import Dict
 from typing import List
+from typing import Optional
 from typing import Tuple
 from typing import Type
+from typing import TYPE_CHECKING
 
 from beancount.core.data import Custom
 
@@ -12,18 +15,21 @@ from fava.core.module_base import FavaModule
 from fava.ext import FavaExtensionBase
 from fava.ext import find_extensions
 
+if TYPE_CHECKING:
+    from fava.core import FavaLedger
+
 
 class ExtensionModule(FavaModule):
     """Fava extensions."""
 
-    def __init__(self, ledger) -> None:
+    def __init__(self, ledger: "FavaLedger") -> None:
         super().__init__(ledger)
         self._instances: Dict[Type[FavaExtensionBase], FavaExtensionBase] = {}
         self.reports: List[Tuple[str, str]] = []
 
     def load_file(self) -> None:
         all_extensions = []
-        custom_entries = self.ledger.all_entries_by_type[Custom]
+        custom_entries = self.ledger.all_entries_by_type.Custom
         _extension_entries = extension_entries(custom_entries)
 
         for extension in _extension_entries:
@@ -49,7 +55,7 @@ class ExtensionModule(FavaModule):
             if ext.report_title is not None:
                 self.reports.append((ext.name, ext.report_title))
 
-    def run_hook(self, event: str, *args) -> None:
+    def run_hook(self, event: str, *args: Any) -> None:
         """Run a hook for all extensions."""
         for ext in self._instances.values():
             ext.run_hook(event, *args)
@@ -79,11 +85,15 @@ class ExtensionModule(FavaModule):
         raise LookupError("Extension report not found.")
 
 
-def extension_entries(custom_entries):
+def extension_entries(
+    custom_entries: List[Custom],
+) -> Dict[str, Optional[str]]:
     """Parse custom entries for extensions.
 
-    They have the following format:
-    2016-04-01 custom "fava-extension" "my_extension" "{'my_option': {}}"
+    They have the following format::
+
+        2016-04-01 custom "fava-extension" "my_extension" "{'my_option': {}}"
+
     """
     _extension_entries = [
         entry for entry in custom_entries if entry.type == "fava-extension"
