@@ -9,7 +9,6 @@ import { string } from "../lib/validation";
 import { currencies_sorted, operating_currency } from ".";
 
 export const showCharts = writable(true);
-export const activeChart = writable({});
 export const chartMode = writable("treemap");
 export const activeChart = writable<NamedChartTypes | undefined>(undefined);
 export const hierarchyChartMode = localStorageSyncedStore(

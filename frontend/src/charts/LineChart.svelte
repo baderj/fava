@@ -9,7 +9,6 @@
 
   import { ctx } from "../format";
   import { lineChartMode } from "../stores/chart";
-  import { currenciesScale } from "./helpers";
   import { axis } from "./axis";
   import { currenciesScale } from "./helpers";
   import { positionedTooltip } from "./tooltip";

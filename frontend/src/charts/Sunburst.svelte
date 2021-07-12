@@ -7,16 +7,13 @@
 
   import { accounts } from "../stores";
 
-  import { ctx, formatPercentage } from "../format";
+  import { ctx } from "../format";
   import { urlFor } from "../helpers";
   import router from "../router";
-  import { accountUrl } from "../helpers";
   import { sunburstScale, getColor } from "./helpers";
-  import { formatCurrency, formatPercentage } from "../format";
+  import { formatPercentage } from "../format";
 
   const offset = 11;
-
-  import { sunburstScale } from "./helpers";
 
   import type { AccountHierarchyDatum, AccountHierarchyNode } from ".";
 

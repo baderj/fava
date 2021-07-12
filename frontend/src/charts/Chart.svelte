@@ -7,7 +7,6 @@
   import { keyboardShortcut } from "../keyboard-shortcuts";
   import {
     chartCurrency,
-    lineChartMode,
     chartMode,
     hierarchyChartMode,
     lineChartMode,
