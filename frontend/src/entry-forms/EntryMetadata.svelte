@@ -1,19 +1,22 @@
-<script>
-  import { _ } from "../helpers";
+<script lang="ts">
+  import type { EntryMetadata } from "../entries";
+  import { _ } from "../i18n";
 
-  export let meta;
+  import { metaValueToString, stringToMetaValue } from "./metadata";
+
+  export let meta: EntryMetadata;
 
   $: metakeys = Object.keys(meta).filter(
     (key) => !key.startsWith("_") && key !== "filename" && key !== "lineno"
   );
 
-  function removeMetadata(metakey) {
+  function removeMetadata(metakey: string) {
     delete meta[metakey];
     meta = meta;
   }
 
-  function updateMetakey(currentKey, newKey) {
-    meta = Object.keys(meta).reduce((m, key) => {
+  function updateMetakey(currentKey: string, newKey: string) {
+    meta = Object.keys(meta).reduce<EntryMetadata>((m, key) => {
       if (key === currentKey) {
         m[newKey] = meta[currentKey];
       } else {
@@ -28,6 +31,48 @@
     meta = meta;
   }
 </script>
+
+{#each metakeys as metakey, i}
+  <div class="flex-row">
+    <button
+      class="muted round remove-row"
+      on:click={() => removeMetadata(metakey)}
+      type="button"
+      tabindex={-1}
+    >
+      ×
+    </button>
+    <input
+      type="text"
+      class="key"
+      placeholder={_("Key")}
+      value={metakey}
+      on:change={(event) => {
+        updateMetakey(metakey, event.currentTarget.value);
+      }}
+      required
+    />
+    <input
+      type="text"
+      class="value"
+      placeholder={_("Value")}
+      value={metaValueToString(meta[metakey])}
+      on:change={(event) => {
+        meta[metakey] = stringToMetaValue(event.currentTarget.value);
+      }}
+    />
+    {#if i === metakeys.length - 1}
+      <button
+        class="muted round"
+        type="button"
+        on:click={addMetadata}
+        title={_("Add metadata")}
+      >
+        +
+      </button>
+    {/if}
+  </div>
+{/each}
 
 <style>
   div {
@@ -50,38 +95,3 @@
     }
   }
 </style>
-
-{#each metakeys as metakey, i}
-  <div class="flex-row">
-    <button
-      class="muted round remove-row"
-      on:click={() => removeMetadata(metakey)}
-      type="button"
-      tabindex="-1">
-      ×
-    </button>
-    <input
-      type="text"
-      class="key"
-      placeholder={_('Key')}
-      value={metakey}
-      on:change={(event) => {
-        updateMetakey(metakey, event.target.value);
-      }}
-      required />
-    <input
-      type="text"
-      class="value"
-      placeholder={_('Value')}
-      bind:value={meta[metakey]} />
-    {#if i === metakeys.length - 1}
-      <button
-        class="muted round"
-        type="button"
-        on:click={addMetadata}
-        title={_('Add metadata')}>
-        +
-      </button>
-    {/if}
-  </div>
-{/each}

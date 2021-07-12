@@ -10,6 +10,7 @@ from os.path import dirname
 from os.path import join
 from os.path import normpath
 from typing import AbstractSet
+from typing import Any
 from typing import List
 from typing import Optional
 from typing import Set
@@ -32,10 +33,12 @@ __plugins__ = ["link_documents"]
 
 def add_to_set(set_: Optional[AbstractSet[str]], new: str) -> Set[str]:
     """Add an entry to a set (or create it if doesn't exist)."""
-    return set(set_).union([new]) if set_ else set([new])
+    return set(set_).union([new]) if set_ else {new}
 
 
-def link_documents(entries: Entries, _) -> Tuple[Entries, List[DocumentError]]:
+def link_documents(
+    entries: Entries, _: Any
+) -> Tuple[Entries, List[DocumentError]]:
     """Link transactions to documents."""
 
     errors = []
@@ -77,7 +80,9 @@ def link_documents(entries: Entries, _) -> Tuple[Entries, List[DocumentError]]:
             if not documents:
                 errors.append(
                     DocumentError(
-                        entry.meta, f"Document not found: '{disk_doc}'", entry,
+                        entry.meta,
+                        f"Document not found: '{disk_doc}'",
+                        entry,
                     )
                 )
                 continue

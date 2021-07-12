@@ -5,8 +5,9 @@ from pathlib import Path
 from typing import Any
 from typing import Optional
 
-import flask
 import pytest
+from flask import g
+from flask import url_for
 
 from fava.core.charts import dumps
 from fava.core.misc import align
@@ -31,23 +32,23 @@ def assert_api_success(response, data: Optional[Any] = None) -> None:
 def test_api_changed(app, test_client) -> None:
     with app.test_request_context("/long-example/"):
         app.preprocess_request()
-        url = flask.url_for("json_api.changed")
+        url = url_for("json_api.changed")
 
     response = test_client.get(url)
     assert_api_success(response, False)
 
 
-def test_api_add_document(app, test_client, tmp_path) -> None:
+def test_api_add_document(app, test_client, tmp_path, monkeypatch) -> None:
     with app.test_request_context("/long-example/"):
         app.preprocess_request()
-        old_documents = flask.g.ledger.options["documents"]
-        flask.g.ledger.options["documents"] = [str(tmp_path)]
+
+        monkeypatch.setitem(g.ledger.options, "documents", [str(tmp_path)])
         request_data = {
             "folder": str(tmp_path),
             "account": "Expenses:Food:Restaurant",
             "file": (BytesIO(b"asdfasdf"), "2015-12-12 test"),
         }
-        url = flask.url_for("json_api.add_document")
+        url = url_for("json_api.add_document")
 
         response = test_client.put(url)
         assert response.status_code == 400
@@ -63,13 +64,12 @@ def test_api_add_document(app, test_client, tmp_path) -> None:
         request_data["file"] = (BytesIO(b"asdfasdf"), "2015-12-12 test")
         response = test_client.put(url, data=request_data)
         assert_api_error(response, f"{filename} already exists.")
-        flask.g.ledger.options["documents"] = old_documents
 
 
 def test_api_errors(app, test_client) -> None:
     with app.test_request_context("/long-example/"):
         app.preprocess_request()
-        url = flask.url_for("json_api.errors")
+        url = url_for("json_api.errors")
 
     response = test_client.get(url)
     assert_api_success(response, 0)
@@ -78,7 +78,7 @@ def test_api_errors(app, test_client) -> None:
 def test_api_payee_accounts(app, test_client) -> None:
     with app.test_request_context("/long-example/"):
         app.preprocess_request()
-        url = flask.url_for("json_api.payee_accounts", payee="test")
+        url = url_for("json_api.payee_accounts", payee="test")
 
     response = test_client.get(url)
     assert_api_success(response, [])
@@ -87,7 +87,7 @@ def test_api_payee_accounts(app, test_client) -> None:
 def test_api_move(app, test_client) -> None:
     with app.test_request_context("/long-example/"):
         app.preprocess_request()
-        url = flask.url_for("json_api.move")
+        url = url_for("json_api.move")
 
     response = test_client.get(url)
     assert_api_error(response)
@@ -96,15 +96,17 @@ def test_api_move(app, test_client) -> None:
 def test_api_source_put(app, test_client) -> None:
     with app.test_request_context("/long-example/"):
         app.preprocess_request()
-        url = flask.url_for("json_api.source")
-        path = flask.g.ledger.beancount_file_path
+        url = url_for("json_api.source")
+        path = g.ledger.beancount_file_path
 
     # test bad request
     response = test_client.put(url)
     assert_api_error(response, "Invalid JSON request.")
 
-    payload = open(path, encoding="utf-8").read()
-    sha256sum = hashlib.sha256(open(path, mode="rb").read()).hexdigest()
+    with open(path, encoding="utf-8") as file_handle:
+        payload = file_handle.read()
+    with open(path, mode="rb") as bfile_handle:
+        sha256sum = hashlib.sha256(bfile_handle.read()).hexdigest()
 
     # change source
     response = test_client.put(
@@ -118,11 +120,13 @@ def test_api_source_put(app, test_client) -> None:
         ),
         content_type="application/json",
     )
-    sha256sum = hashlib.sha256(open(path, mode="rb").read()).hexdigest()
+    with open(path, mode="rb") as bfile_handle:
+        sha256sum = hashlib.sha256(bfile_handle.read()).hexdigest()
     assert_api_success(response, sha256sum)
 
     # check if the file has been written
-    assert open(path, encoding="utf-8").read() == "asdf" + payload
+    with open(path, encoding="utf-8") as file_handle:
+        assert file_handle.read() == "asdf" + payload
 
     # write original source file
     result = test_client.put(
@@ -133,32 +137,37 @@ def test_api_source_put(app, test_client) -> None:
         content_type="application/json",
     )
     assert result.status_code == 200
-    assert open(path, encoding="utf-8").read() == payload
+    with open(path, encoding="utf-8") as file_handle:
+        assert file_handle.read() == payload
 
 
 def test_api_format_source(app, test_client) -> None:
     with app.test_request_context("/long-example/"):
         app.preprocess_request()
-        url = flask.url_for("json_api.format_source")
-        path = flask.g.ledger.beancount_file_path
+        url = url_for("json_api.format_source")
+        path = g.ledger.beancount_file_path
 
-    payload = open(path, encoding="utf-8").read()
+    with open(path, encoding="utf-8") as file_handle:
+        payload = file_handle.read()
 
     response = test_client.put(
-        url, data=dumps({"source": payload}), content_type="application/json",
+        url,
+        data=dumps({"source": payload}),
+        content_type="application/json",
     )
     assert_api_success(response, align(payload, 61))
 
 
-def test_api_format_source_options(app, test_client) -> None:
+def test_api_format_source_options(app, test_client, monkeypatch) -> None:
     with app.test_request_context("/long-example/"):
         app.preprocess_request()
-        path = flask.g.ledger.beancount_file_path
-        payload = open(path, encoding="utf-8").read()
+        path = g.ledger.beancount_file_path
+        with open(path, encoding="utf-8") as file_handle:
+            payload = file_handle.read()
 
-        url = flask.url_for("json_api.format_source")
-        old_currency_column = flask.g.ledger.fava_options["currency-column"]
-        flask.g.ledger.fava_options["currency-column"] = 90
+        url = url_for("json_api.format_source")
+
+        monkeypatch.setitem(g.ledger.fava_options, "currency-column", 90)
 
         response = test_client.put(
             url,
@@ -167,16 +176,13 @@ def test_api_format_source_options(app, test_client) -> None:
         )
         assert_api_success(response, align(payload, 90))
 
-        flask.g.ledger.fava_options["currency-column"] = old_currency_column
 
-
-def test_api_add_entries(app, test_client, tmp_path):
+def test_api_add_entries(app, test_client, tmp_path, monkeypatch):
     with app.test_request_context("/long-example/"):
         app.preprocess_request()
-        old_beancount_file = flask.g.ledger.beancount_file_path
         test_file = tmp_path / "test_file"
         test_file.open("a")
-        flask.g.ledger.beancount_file_path = str(test_file)
+        monkeypatch.setattr(g.ledger, "beancount_file_path", str(test_file))
 
         data = {
             "entries": [
@@ -227,7 +233,7 @@ def test_api_add_entries(app, test_client, tmp_path):
                 },
             ]
         }
-        url = flask.url_for("json_api.add_entries")
+        url = url_for("json_api.add_entries")
 
         response = test_client.put(
             url, data=dumps(data), content_type="application/json"
@@ -251,8 +257,6 @@ def test_api_add_entries(app, test_client, tmp_path):
 """
         )
 
-        flask.g.ledger.beancount_file_path = old_beancount_file
-
 
 @pytest.mark.parametrize(
     "query_string,result_str",
@@ -265,7 +269,7 @@ def test_api_add_entries(app, test_client, tmp_path):
 def test_api_query_result(query_string, result_str, app, test_client) -> None:
     with app.test_request_context("/long-example/"):
         app.preprocess_request()
-        url = flask.url_for("json_api.query_result", query_string=query_string)
+        url = url_for("json_api.query_result", query_string=query_string)
 
     response = test_client.get(url)
     assert response.status_code == 200

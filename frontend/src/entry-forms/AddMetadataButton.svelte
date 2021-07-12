@@ -1,7 +1,8 @@
-<script>
-  import { _ } from "../helpers";
+<script lang="ts">
+  import type { EntryMetadata } from "../entries";
+  import { _ } from "../i18n";
 
-  export let meta;
+  export let meta: EntryMetadata;
 
   function addMetadata() {
     meta[""] = "";
@@ -13,7 +14,8 @@
   class="muted round"
   type="button"
   on:click={addMetadata}
-  tabindex="-1"
-  title={_('Add metadata')}>
+  tabindex={-1}
+  title={_("Add metadata")}
+>
   m
 </button>

@@ -1,20 +1,26 @@
-<script>
-  import { max, merge, min, extent } from "d3-array";
-  import { axisLeft, axisBottom } from "d3-axis";
-  import { scaleLinear, scaleUtc } from "d3-scale";
+<script lang="ts">
+  import { extent, max, merge, min } from "d3-array";
+  import { axisBottom, axisLeft } from "d3-axis";
   import { quadtree } from "d3-quadtree";
-  import { line, area } from "d3-shape";
+  import { scaleLinear, scaleUtc } from "d3-scale";
+  import { area, curveStepAfter, line } from "d3-shape";
   import { getContext } from "svelte";
+  import type { Writable } from "svelte/store";
 
+  import { ctx } from "../format";
   import { lineChartMode } from "../stores/chart";
   import { currenciesScale } from "./helpers";
   import { axis } from "./axis";
-  import { formatCurrencyShort } from "../format";
+  import { currenciesScale } from "./helpers";
   import { positionedTooltip } from "./tooltip";
 
-  export let data;
-  export let width;
-  export let tooltipText;
+  import type { LineChart, LineChartDatum } from ".";
+
+  export let data: LineChart["data"];
+  export let width: number;
+  export let tooltipText: LineChart["tooltipText"];
+
+  const today = new Date();
   const margin = {
     top: 10,
     right: 10,
@@ -25,7 +31,7 @@
   $: innerWidth = width - margin.left - margin.right;
   $: innerHeight = height - margin.top - margin.bottom;
 
-  const legend = getContext("chart-legend");
+  const legend: Writable<[string, string][]> = getContext("chart-legend");
   $: legend.set(
     data
       .map((d) => d.name)
@@ -34,12 +40,16 @@
   );
 
   // Scales
-  $: allValues = merge(data.map((d) => d.values));
+  $: allValues = merge<LineChartDatum>(data.map((d) => d.values));
+
+  let xDomain: [Date, Date];
   $: xDomain = [
-    min(data, (s) => s.values[0].date),
-    max(data, (s) => s.values[s.values.length - 1].date),
+    min(data, (s) => s.values[0].date) ?? today,
+    max(data, (s) => s.values[s.values.length - 1].date) ?? today,
   ];
   $: x = scaleUtc().domain(xDomain).range([0, innerWidth]);
+  let yMin = 0;
+  let yMax = 0;
   $: [yMin = 0, yMax = 0] = extent(allValues, (v) => v.value);
   // Span y-axis as max minus min value plus 5 percent margin
   $: y = scaleLinear()
@@ -53,9 +63,16 @@
     (d) => y(d.value)
   );
 
-  $: lineShape = line()
+  $: lineShape = line<LineChartDatum>()
     .x((d) => x(d.date))
-    .y((d) => y(d.value));
+    .y((d) => y(d.value))
+    .curve(curveStepAfter);
+
+  $: areaShape = area<LineChartDatum>()
+    .x((d) => x(d.date))
+    .y1((d) => y(d.value))
+    .y0(Math.min(innerHeight, y(0)))
+    .curve(curveStepAfter);
 
   $: areaShape = area()
     .x((d) => x(d.date))
@@ -67,62 +84,89 @@
   $: yAxis = axisLeft(y)
     .tickPadding(6)
     .tickSize(-innerWidth)
-    .tickFormat(formatCurrencyShort);
+    .tickFormat($ctx.short);
 
-  function tooltipInfo(...pos) {
-    const d = quad.find(...pos);
-    return d ? [x(d.date), y(d.value), tooltipText(d)] : undefined;
+  function tooltipInfo(
+    xPos: number,
+    yPos: number
+  ): [number, number, string] | undefined {
+    const d = quad.find(xPos, yPos);
+    return d ? [x(d.date), y(d.value), tooltipText($ctx, d)] : undefined;
   }
+
+  $: hasFutureData = xDomain[1] > today;
 </script>
 
-{#if $lineChartMode === 'line'}
-  <svg class="linechart" {width} {height}>
+<svg {width} {height}>
+  <filter id="desaturateFuture">
+    <feColorMatrix type="saturate" values="0.5" x={x(today)} />
+    <feBlend in2="SourceGraphic" />
+  </filter>
+  <g
+    use:positionedTooltip={tooltipInfo}
+    transform={`translate(${margin.left},${margin.top})`}
+  >
     <g
-      use:positionedTooltip={tooltipInfo}
-      transform={`translate(${margin.left},${margin.top})`}>
+      class="x axis"
+      use:axis={xAxis}
+      transform={`translate(0,${innerHeight})`}
+    />
+    <g class="y axis" use:axis={yAxis} />
+    {#if $lineChartMode === "area"}
       <g
-        class="x axis"
-        use:axis={xAxis}
-        transform={`translate(0,${innerHeight})`} />
-      <g class="y axis" use:axis={yAxis} />
-      <g class="lines">
+        class="area"
+        filter={hasFutureData ? "url(#desaturateFuture)" : undefined}
+      >
         {#each data as d}
-          <path d={lineShape(d.values)} stroke={$currenciesScale(d.name)} />
+          <path
+            d={areaShape(d.values) ?? undefined}
+            fill={$currenciesScale(d.name)}
+          />
         {/each}
       </g>
+    {/if}
+    <g
+      class="lines"
+      filter={hasFutureData ? "url(#desaturateFuture)" : undefined}
+    >
+      {#each data as d}
+        <path
+          d={lineShape(d.values) ?? undefined}
+          stroke={$currenciesScale(d.name)}
+        />
+      {/each}
+    </g>
+    {#if $lineChartMode !== "area"}
       <g>
         {#each data as d}
           <g fill={$currenciesScale(d.name)}>
             {#each d.values as v}
-              <circle r="3" cx={x(v.date)} cy={y(v.value)} />
+              <circle
+                r="2"
+                cx={x(v.date)}
+                cy={y(v.value)}
+                class:desaturate={v.date > today}
+              />
             {/each}
           </g>
         {/each}
       </g>
-    </g>
-  </svg>
-{:else if $lineChartMode === 'area'}
-  <svg class="areachart" {width} {height}>
-    <g
-      use:positionedTooltip={tooltipInfo}
-      transform={`translate(${margin.left},${margin.top})`}>
-      <g
-        class="x axis"
-        use:axis={xAxis}
-        transform={`translate(0,${innerHeight})`} />
-      <g class="y axis" use:axis={yAxis} />
-      <g class="area">
-        {#each data as d}
-          <path
-            d={areaShape(d.values, innerHeight)}
-            fill={$currenciesScale(d.name)} />
-        {/each}
-      </g>
-      <g class="lines">
-        {#each data as d}
-          <path d={lineShape(d.values)} stroke={$currenciesScale(d.name)} />
-        {/each}
-      </g>
-    </g>
-  </svg>
-{/if}
+    {/if}
+  </g>
+</svg>
+
+<style>
+  svg > g {
+    pointer-events: all;
+  }
+  .lines path {
+    fill: none;
+    stroke-width: 2px;
+  }
+  .area path {
+    opacity: 0.3;
+  }
+  .desaturate {
+    filter: saturate(50%);
+  }
+</style>
