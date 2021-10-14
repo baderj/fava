@@ -19,7 +19,7 @@
     top: 10,
     right: 10,
     bottom: 30,
-    left: 40,
+    left: 45,
   };
   const height = 450;
   $: innerWidth = width - margin.left - margin.right;
