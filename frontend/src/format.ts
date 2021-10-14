@@ -30,9 +30,9 @@ export function formatPercentage(number: number): string {
   return `${formatterPer(Math.abs(number) * 100)}%`;
 }
 
-const formatterShort = format(".10s");
+const formatterShort = format(".4s");
 export function formatCurrencyShort(number: number): string {
-  return `${incognito(formatterShort(number))} EXTRASTUFF`;
+  return `${incognito(formatterShort(number))}`;
 }
 
 /** Date formatters for human consumption. */
