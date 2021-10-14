@@ -37,7 +37,7 @@ export interface FormatterContext {
   currency: (num: number) => string;
 }
 
-const formatterShort = format(".3s");
+const formatterShort = format(".4s");
 export const ctx = derived(
   [incognito, favaOptions],
   ([i, f]): FormatterContext => {
