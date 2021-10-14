@@ -15,7 +15,7 @@ favaAPIStore.subscribe((favaAPI) => {
   const { locale } = favaAPI.favaOptions;
   formatter = locale
     ? new Intl.NumberFormat(locale.replace("_", "-")).format
-    : (formatter = format(".2f"));
+    : (formatter = format(".9f"));
   incognito = favaAPI.incognito
     ? (num: string): string => num.replace(/[0-9]/g, "X")
     : (num: string): string => num;
@@ -30,9 +30,9 @@ export function formatPercentage(number: number): string {
   return `${formatterPer(Math.abs(number) * 100)}%`;
 }
 
-const formatterShort = format(".3s");
+const formatterShort = format(".10s");
 export function formatCurrencyShort(number: number): string {
-  return incognito(formatterShort(number));
+  return `${incognito(formatterShort(number))} EXTRASTUFF`;
 }
 
 /** Date formatters for human consumption. */
