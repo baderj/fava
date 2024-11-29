@@ -57,7 +57,7 @@ def format_currency(
 
     if "." in v:
         main, sub = v.split(".")
-        formatted = "{:,}.{sub}".format(int(main), sub).replace(",","'")
+        formatted = "{:,}.{}".format(int(main), sub).replace(",","'")
         return formatted
     else:
         formatted = "{:,}".format(int(v)).replace(",","'")
