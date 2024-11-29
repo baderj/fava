@@ -66,9 +66,8 @@ def format_currency(
     v = g.ledger.format_decimal(value, currency)
     if "." in v:
         main, sub = v.split(".")
-        return "TEST"
-        #formatted = "{:'}.{sub}".format(int(main), sub)
-        #return formatted
+        formatted = "{:'}.{sub}".format(int(main), sub)
+        return formatted
     else:
         formatted = "{:'}".format(int(v))
         return formatted
