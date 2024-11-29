@@ -69,7 +69,7 @@ def format_currency(
         formatted = "{:'}.{sub}".format(int(main), sub)
         return formatted
     else:
-        formatted = "{:'}.{sub}".format(int(v), sub)
+        formatted = "{:'}".format(int(v))
         return formatted
 
 
