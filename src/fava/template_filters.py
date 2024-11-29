@@ -62,7 +62,16 @@ def format_currency(
         return g.ledger.format_decimal(ZERO, currency)
     if invert:
         value = -value
-    return g.ledger.format_decimal(value, currency)
+
+    v = g.ledger.format_decimal(value, currency)
+    if "." in v:
+        main, sub = v.split(".")
+        formatted = "{:'}.{sub}".format(int(main), sub)
+        return formatted
+    else:
+        formatted = "{:'}.{sub}".format(int(v), sub)
+        return formatted
+
 
 
 def format_date(date: datetime.date) -> str:
