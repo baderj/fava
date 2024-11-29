@@ -52,7 +52,16 @@ def format_currency(
         return ""
     if value == ZERO:
         return g.ledger.format_decimal(ZERO, currency)
-    return g.ledger.format_decimal(value, currency)
+
+    v = g.ledger.format_decimal(value, currency)
+
+    if "." in v:
+        main, sub = v.split(".")
+        formatted = "{:'}.{sub}".format(int(main), sub)
+        return formatted
+    else:
+        formatted = "{:'}".format(int(v))
+        return formatted
 
 
 def format_amount(amount: Amount) -> str:
